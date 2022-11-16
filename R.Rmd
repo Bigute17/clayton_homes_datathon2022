@@ -128,20 +128,19 @@ RITime_Mortgage  <- inner_join(RITime,Mortgage, by = c("Year"))
 RITime_Mortgage$RegionName <- as.factor(RITime_Mortgage$RegionName)
 RIRegion$RegionID <- as.factor(RIRegion$RegionID)
 RITime_Mortgage_Region <- inner_join(RITime_Mortgage,RIRegion, by = c("RegionName" = "RegionID"))
-```
 
-**income %30**
+RITime_Mortgage_Region$RegionName <- as.factor(RITime_Mortgage_Region$RegionName)
+Zip$Year <- as.factor(Zip$Year)
+Zip$Zip_Code <- as.factor(Zip$Zip_Code)
+RITime_Mortage_Region_Census <- inner_join(RITime_Mortgage_Region,Zip, by = c("RegionName" = "Zip_Code", "Year" = "Year"))
 
-```{r}
-glimpse(Zip)
+RENTAL <- RITime_Mortage_Region_Census %>%
+  group_by(Year) %>%
+  drop_na(values) %>%
+  summarise(mean_of_median_rent = mean(values),
+            mean_of_median_income = mean(as.numeric(Median_Income_USD)))
 
-class(Zip$Median_Income_USD)
-
-Zip$Median_Income_USD = as.numeric(Zip$Median_Income_USD)
-
-Zip = Zip %>% 
-  mutate(thirty_percent_income = 0.3*Median_Income_USD)
-
-Zip[which.max(Zip$Median_Income_USD),]
+Mortage_Rate <- RITime_Mortage_Region_Census %>%
+  
 ```
 
