@@ -144,3 +144,48 @@ Mortage_Rate <- RITime_Mortage_Region_Census %>%
   
 ```
 
+```{r JOHNATHAN'S UPDATES}
+library(ggplot2)
+names(Zip)
+
+Zip$Median_Income_USD <- as.numeric(Zip$Median_Income_USD)
+
+Zip[which.max(Zip$Median_Income_USD), ]
+
+YearlyIncome <- Zip %>% 
+  group_by(Year) %>% 
+  summarise(
+    medIncome = median(Median_Income_USD, na.rm = TRUE)
+  )
+
+ggplot(YearlyIncome, mapping = aes(x = Year, y = medIncome)) + geom_line()
+
+Mortgage_Zip_VI$Median_Income_USD <- as.numeric(Mortgage_Zip_VI$Median_Income_USD)
+
+MyShit <- Mortgage_Zip_VI %>% 
+  filter(Year %in% c(2020)) %>% 
+  group_by(Zip_Code) %>% 
+  summarise(
+    medIncome = Median_Income_USD,
+    maxYrPmt = Median_Income_USD * 0.25,
+    maxMthPmt = (Median_Income_USD * 0.25)/12
+  )
+
+MyShit <- MyShit[!is.na(MyShit$medIncome), ]
+MyShit$maxYrPmt <- round(MyShit$maxYrPmt, 2)
+MyShit$maxMthPmt <- round(MyShit$maxMthPmt, 2)
+
+MyShit <- MyShit %>% 
+  group_by(Zip_Code) %>% 
+  summarise(
+    medIncome = medIncome,
+    maxYrPmt = maxYrPmt,
+    maxMthPmt = maxMthPmt,
+    maxHHPrice = maxMthPmt * 30 + (maxMthPmt * 30 * 0.01) # NEEDS TO COMPOUND
+  )
+
+MyShit <- MyShit[!is.na(MyShit$medIncome), ]
+
+ggplot(MyShit, mapping = aes(x = maxHHPrice)) + geom_histogram(binwidth = 2500)
+```
+
