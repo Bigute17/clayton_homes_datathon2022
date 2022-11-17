@@ -15,6 +15,7 @@ library(stringr)
 # Interest Rate
 
 ```{r}
+# add mortgage data, remove % from values
 Mortgage = read.csv('https://drive.google.com/uc?id=1lokCssSi25y6MzXBtry9QMOTfkZg0btW') %>%
   `colnames<-`(c('Year', 'Rate')) %>%
   mutate(Rate=as.numeric(str_replace(Rate, '%', '')))
@@ -22,12 +23,14 @@ Mortgage
 ```
 
 ```{r}
+# Time series plot of mortgage rates from 1970s - ~2022
 plot(Mortgage, type = 'l')
 ```
 
 # **Zip: Hourseholds and Income**
 
 ```{r}
+# Load in zip code data, remove null households and null incomes, convert households to numeric
 Zip = read_csv('https://drive.google.com/uc?id=12wY5XI1KfV9ffmUDjO2utTrSa5Ksyus8') %>%
   `colnames<-`(c('Year', 'Zip_Code', 'Households', 'Median_Income_USD')) %>%
   filter(Households != 'null' | Median_Income_USD != 'null') %>%
@@ -36,6 +39,7 @@ Zip
 ```
 
 ```{r}
+# There are 136 instances with a median income > 250,000+
 Zip %>%
   filter(str_detect(Median_Income_USD, '\\+')) %>%
   group_by(Median_Income_USD) %>%
@@ -43,6 +47,7 @@ Zip %>%
 ```
 
 ```{r}
+# 122 instances of median income 2,500 or less
 Zip %>%
   filter(str_detect(Median_Income_USD, '\\-')) %>%
   group_by(Median_Income_USD) %>%
@@ -60,17 +65,20 @@ Zillow also publishes ZHVI for all single-family residences (\$, typical value f
 Here's a handy ZHVI User Guide for information about properly citing and making calculations with this metric.
 
 ```{r}
+# Load in housing zillow data
 VI = read.csv('https://drive.google.com/uc?id=1ZToY3SzTWwg0gbKj_H9o7h6myt_dKFIu', row.names ='RegionName') %>% 
    as_tibble()
 VI
 ```
 
 ```{r}
+# These columns represent the median housing prices according to zillow (I think)
 VIMonth = select(VI, contains('.'))
 VIMonth
 ```
 
 ```{r}
+# Add variable RegionName for row # (seems useless). Seperate year and month from the dates
 VITime = cbind(RegionName=rownames(VIMonth), stack(VIMonth)) %>%
   mutate(
     Year = substr(ind, 2, 5),
@@ -80,6 +88,7 @@ VITime
 ```
 
 ```{r}
+# select columns without a .
 VIRegion = select(VI, !contains('.'))
 VIRegion
 ```
@@ -89,16 +98,19 @@ VIRegion
 Zillow Observed Rent Index (ZORI): A smoothed measure of the typical observed market rate rent across a given region. ZORI is a repeat-rent index that is weighted to the rental housing stock to ensure representativeness across the entire market, not just those homes currently listed for-rent. The index is dollar-denominated by computing the mean of listed rents that fall into the 40th to 60th percentile range for all homes and apartments in a given region, which is once again weighted to reflect the rental housing stock. Details available in ZORI methodology.
 
 ```{r}
+# Add rent data
 RI = read.csv('https://drive.google.com/uc?id=1MTnf6k39PShycq66yRANKqFZW5BmJfME', row.names='RegionName')
 RI
 ```
 
 ```{r}
+# select median monthly rent columns
 RIMonth = select(RI, contains('.'))
 RIMonth
 ```
 
 ```{r}
+# Add column for row numbers, seperate year and month
 RITime = cbind(RegionName=rownames(RIMonth), stack(RIMonth)) %>%
   mutate(
     Year = substr(ind, 2, 5),
@@ -108,6 +120,7 @@ RITime
 ```
 
 ```{r}
+# select all other columns
 RIRegion = select(RI, !contains('.'))
 RIRegion
 ```
@@ -115,43 +128,57 @@ RIRegion
 
 
 ```{r}
+# Join mortgage and zip code data, filter out 0 households
 Mortgage_Zip <- inner_join(Mortgage,Zip, by = c("Year"))
 Mortgage_Zip_VI <- inner_join(Mortgage_Zip,VI, by = c("Zip_Code" = "RegionID"))
 Mortgage_Zip_VI_Zero_Removed <- Mortgage_Zip_VI %>% filter(!Households == 0)
 ```
 
 ```{r}
+#Convert year to factor
 RITime$Year <- as.factor(RITime$Year)
 Mortgage$Year <- as.factor(Mortgage$Year)
+
+# Join rent index with mortgage data
 RITime_Mortgage  <- inner_join(RITime,Mortgage, by = c("Year"))
 
+# convert variables to factor
 RITime_Mortgage$RegionName <- as.factor(RITime_Mortgage$RegionName)
 RIRegion$RegionID <- as.factor(RIRegion$RegionID)
+
+# join rent/mortgage data
 RITime_Mortgage_Region <- inner_join(RITime_Mortgage,RIRegion, by = c("RegionName" = "RegionID"))
 
+# convert variables to factor
 RITime_Mortgage_Region$RegionName <- as.factor(RITime_Mortgage_Region$RegionName)
 Zip$Year <- as.factor(Zip$Year)
 Zip$Zip_Code <- as.factor(Zip$Zip_Code)
+
+# Join rent/mortgage/region data with zip code data
 RITime_Mortage_Region_Census <- inner_join(RITime_Mortgage_Region,Zip, by = c("RegionName" = "Zip_Code", "Year" = "Year"))
 
+# Average the median rent and median income aggregated by year
 RENTAL <- RITime_Mortage_Region_Census %>%
   group_by(Year) %>%
   drop_na(values) %>%
   summarise(mean_of_median_rent = mean(values),
             mean_of_median_income = mean(as.numeric(Median_Income_USD)))
 
-Mortage_Rate <- RITime_Mortage_Region_Census %>%
+#Mortage_Rate <- RITime_Mortage_Region_Census %>%
   
 ```
 
-```{r JOHNATHAN'S UPDATES}
+```{r}
 library(ggplot2)
 names(Zip)
 
+#Convert median income to numeric
 Zip$Median_Income_USD <- as.numeric(Zip$Median_Income_USD)
 
+# Find the maximum median income for a zip-code
 Zip[which.max(Zip$Median_Income_USD), ]
 
+# Yearly median income across all zip-codes
 YearlyIncome <- Zip %>% 
   group_by(Year) %>% 
   summarise(
@@ -160,8 +187,10 @@ YearlyIncome <- Zip %>%
 
 ggplot(YearlyIncome, mapping = aes(x = Year, y = medIncome)) + geom_line()
 
+# Convert median income to numeric
 Mortgage_Zip_VI$Median_Income_USD <- as.numeric(Mortgage_Zip_VI$Median_Income_USD)
 
+# Median income, maximum yearly and monthly mortgage payments aggregated by zip code
 MyShit <- Mortgage_Zip_VI %>% 
   filter(Year %in% c(2020)) %>% 
   group_by(Zip_Code) %>% 
@@ -171,10 +200,12 @@ MyShit <- Mortgage_Zip_VI %>%
     maxMthPmt = (Median_Income_USD * 0.25)/12
   )
 
+# remove NA incomes and round max payments to 2 decimal places
 MyShit <- MyShit[!is.na(MyShit$medIncome), ]
 MyShit$maxYrPmt <- round(MyShit$maxYrPmt, 2)
 MyShit$maxMthPmt <- round(MyShit$maxMthPmt, 2)
 
+# Median income, max yrly/mthly pmnt, and max household price by zip code (need compounding logic for hh price)
 MyShit <- MyShit %>% 
   group_by(Zip_Code) %>% 
   summarise(
@@ -184,8 +215,10 @@ MyShit <- MyShit %>%
     maxHHPrice = maxMthPmt * 30 + (maxMthPmt * 30 * 0.01) # NEEDS TO COMPOUND
   )
 
+# Remove NA incomes
 MyShit <- MyShit[!is.na(MyShit$medIncome), ]
 
+# Histogram of max household prices across all zip-codes
 ggplot(MyShit, mapping = aes(x = maxHHPrice)) + geom_histogram(binwidth = 2500)
 ```
 
