@@ -20,8 +20,6 @@ Mortgage = read.csv('https://drive.google.com/uc?id=1lokCssSi25y6MzXBtry9QMOTfkZ
   mutate(Rate=as.numeric(str_replace(Rate, '%', '')))
 #Mortgage
 
-mortgage_2015 <- Mortgage %>% ## SUBSET mortgage to just 2015 and above
-  filter(Year >= 2015) 
 ```
 
 ```{r}
@@ -36,24 +34,21 @@ Zip = read_csv('https://drive.google.com/uc?id=12wY5XI1KfV9ffmUDjO2utTrSa5Ksyus8
   filter(Households != 'null' | Median_Income_USD != 'null') %>%
   mutate(Households = as.numeric(Households))
 #Zip
-
-zip_2015 <- Zip %>% ## SUBSET zip code to just 2015 and above
-  filter(as.integer(Year) >= as.integer(2015)) 
 ```
 
 ```{r}
-zip_2015 <- zip_2015 %>%
+Zip <- Zip %>%
   filter(!str_detect(Median_Income_USD, '\\+'))  ## REMOVED median income with a +
 ```
 
 ```{r}
-zip_2015 <- zip_2015 %>%
+Zip <- Zip %>%
   filter(!str_detect(Median_Income_USD, '\\-')) ## REMOVED median income with a -
 
-zip_2015 <- zip_2015 %>%
+Zip <- Zip %>%
   filter(!str_detect(Median_Income_USD, '(X)')) ## REMOVED median income with a (X)
 
-zip_2015$Median_Income_USD <- as.integer(zip_2015$Median_Income_USD) ## CHANGED median income to integer
+Zip$Median_Income_USD <- as.integer(Zip$Median_Income_USD) ## CHANGED median income to integer
 
 ```
 
@@ -104,21 +99,21 @@ VIRegion_VITime_Joined <- VIRegion_VITime_Joined %>% mutate(Month = substr(ind, 
 
 colnames(VIRegion_VITime_Joined)[10] <- "ZHVI" # CHANGED the median house price from index to ZHVI. THIS IS THE average of the 35th - 65th percentile for housing price.
 
-VIRegion_VITime_Joined_2015 <- VIRegion_VITime_Joined %>% ## FILTERED the previous join to only just 2015 and above
-  filter(Year >= 2015)
+VIRegion_VITime_Joined$Year <- as.integer(VIRegion_VITime_Joined$Year) ## CHANGED Year to integer
+VIRegion_VITime_Joined <- full_join(VIRegion_VITime_Joined, Mortgage, by = "Year") ## JOINED ALL DATA from mortgage to VIRegion_VITime
 
-VIRegion_VITime_Joined_2015$Year <- as.integer(VIRegion_VITime_Joined_2015$Year) ## CHANGED Year to integer
-VIRegion_VITime_Joined_2015_Mortage_Join <- full_join(VIRegion_VITime_Joined_2015, mortgage_2015, by = "Year") ## JOINED ALL DATA from mortgage 2015 to VIRegion_VITime_Joined_2015
+VIRegion_VITime_Joined <- VIRegion_VITime_Joined %>% filter(Year >= 2000) ## Took off Years below 2000 because of Mortages limit
+VIRegion_VITime_Joined <- VIRegion_VITime_Joined %>% filter(Year <= 2021) ## Took of Years greater than 2021 because of Mortages limit
+###########################################
+#VIRegion_VITime_Joined      This dataset is all the housing index stuff we need.
+############################################
 ```
 
 
 ```{r}
 ## CLEANING UP
-rm(Mortgage)
 rm(VI)
 rm(VIMonth)
-rm(VIRegion_VITime_Joined)
-rm(VIRegion_VITime_Joined_2015)
 rm(Zip)
 rm(VITime)
 rm(VIRegion)
@@ -167,17 +162,20 @@ colnames(RIRegion_RITime_Joined)[10] <- "ZORI" # CHANGED the median rent price f
 
 RIRegion_RITime_Joined$Year <- as.integer(RIRegion_RITime_Joined$Year) ## CHANGED Year to integer
 
+RIRegion_RITime_Joined_2015_Mortage_Join <- full_join(RIRegion_RITime_Joined, Mortgage, by = "Year") ## JOINED ALL DATA from mortgage to RIRegion_RITime_Joined
+
 ###
-# RIRegion_RITime_Joined ## Is all of the Renter Index information Together. You may need to join the mortage stuff to it if you want to do something with that.
+# RIRegion_RITime_Joined ## Is all of the Renter Index information Together. 
 ###
 ```
 
 
 ```{r}
-FULL_DATASET <- inner_join(VIRegion_VITime_Joined_2015_Mortage_Join,RIRegion_RITime_Joined, by = c("RegionName","Month","Year"), suffix = c("_VI","_RI")) ## INNER JOINING by RegionName, Month, and Year in order to match everything correctly. The suffix is there to understand which dataset you are looking at. _VI refers to the housing value index. _RI refers to the Renter Index. 
+FULL_DATASET <- full_join(VIRegion_VITime_Joined,RIRegion_RITime_Joined_2015_Mortage_Join, by = c("RegionName","Month","Year","RegionID","State","Metro",
+                                                                                                  "StateName","RegionType","SizeRank","City","CountyName","ind","Rate"), suffix = c("_VI","_RI")) ## INNER JOINING by RegionName, Month, and Year in order to match everything correctly. The suffix is there to understand which dataset you are looking at. _VI refers to the housing value index. _RI refers to the Renter Index. 
 
 #There is a lot of missing data for the index's as one index will have data but the other wont for that time of the year and month. Should be okay as we are mainly looking at houses.
-
+FULL_DATASET <- FULL_DATASET %>% filter(Year >= 2015) ## 
 FULL_DATASET <- FULL_DATASET %>% filter(Year <= 2021) ## Removed dates that go beyond the 30 - year mortage rate.
 ```
 
