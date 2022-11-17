@@ -103,9 +103,6 @@ colnames(VIRegion_VITime_Joined)[10] <- "ZHVI" # CHANGED the median house price 
 
 VIRegion_VITime_Joined$Year <- as.integer(VIRegion_VITime_Joined$Year) ## CHANGED Year to integer
 VIRegion_VITime_Joined <- full_join(VIRegion_VITime_Joined, Mortgage, by = "Year") ## JOINED ALL DATA from mortgage to VIRegion_VITime
-
-VIRegion_VITime_Joined <- VIRegion_VITime_Joined %>% filter(Year >= 2011) ## Took off Years below 2011 because of Mortages limit
-VIRegion_VITime_Joined <- VIRegion_VITime_Joined %>% filter(Year <= 2021) ## Took of Years greater than 2021 because of Mortages limit
 ###########################################
 #VIRegion_VITime_Joined      This dataset is all the housing index stuff we need.
 ############################################
@@ -150,8 +147,12 @@ RIRegion = select(RI, !contains('.'))
 
 ZIP_CODE_RI <- RIRegion %>% select(RegionID,RegionName)
 
-VIRegion_VITime_Joined_RI_ZIP <- full_join(VIRegion_VITime_Joined, ZIP_CODE_RI, by = "RegionID")
-HOUSE_WITH_EVERYTHING <- full_join(VIRegion_VITime_Joined_RI_ZIP, Zip, by = c("Year","RegionName" = "Zip_Code")) 
+VIRegion_VITime_Joined_RI_ZIP <- inner_join(VIRegion_VITime_Joined, ZIP_CODE_RI, by = "RegionID")
+VIRegion_VITime_Joined_RI_ZIP$Year <- as.integer(VIRegion_VITime_Joined_RI_ZIP$Year) 
+HOUSE_WITH_EVERYTHING <- inner_join(VIRegion_VITime_Joined_RI_ZIP, Zip, by = c("Year","RegionName" = "Zip_Code")) 
+
+HOUSE_WITH_EVERYTHING <- HOUSE_WITH_EVERYTHING %>% filter(Year < 2020)
+colnames(HOUSE_WITH_EVERYTHING)[10] <- "ZHVI"
 ```
 
 
