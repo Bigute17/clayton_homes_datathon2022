@@ -203,3 +203,31 @@ ggplot(TEST, aes(Year, mean_ZHVI)) + geom_point() + geom_line()
 
 ```
 
+```{r}
+#Luke
+#Mean rate by year
+
+test_a <- FULL_DATASET %>%
+  group_by(Year, Month) %>%
+  summarize(mean_rate = mean(Rate, rm.na = TRUE))
+test_a 
+
+ggplot(test_a, aes(x = Year, y = mean_rate)) + geom_point() + geom_smooth(method="lm")
+```
+
+```{r}
+#Which states have the highest rate of ZHVI increases thru 2015-2021?
+
+test_b <- FULL_DATASET %>%
+  group_by(Year, State) %>%
+  summarise(mean_ZHVI = mean(ZHVI, na.rm = T)) %>%
+  group_by(State) %>%
+  summarize(improvement_rate_2015_to_2021= max(mean_ZHVI)/min(mean_ZHVI)) %>%
+  arrange(desc(improvement_rate_2015_to_2021))
+
+head_test_b <- head(test_b)
+  
+
+ggplot(head_test_b, aes(State, improvement_rate_2015_to_2021)) + geom_boxplot()
+```
+

@@ -220,14 +220,25 @@ ggplot(test_a, aes(x = Year, y = mean_rate)) + geom_point() + geom_smooth(method
 
 test_b <- FULL_DATASET %>%
   group_by(Year, State) %>%
-  summarise(mean_ZHVI = mean(ZHVI, na.rm = T)) %>%
-  group_by(State) %>%
-  summarize(improvement_rate_2015_to_2021= max(mean_ZHVI)/min(mean_ZHVI)) %>%
-  arrange(desc(improvement_rate_2015_to_2021))
+  subset(Year == 2015) %>%
+  summarise(mean_ZHVI_2015 = mean(ZHVI, na.rm = T))
 
-head_test_b <- head(test_b)
+test_b1 <- FULL_DATASET %>%
+  group_by(Year, State) %>%
+  subset(Year == 2021) %>%
+  summarise(mean_ZHVI_2021 = mean(ZHVI, na.rm = T))
+
+test_b2 <- test_b %>%
+  mutate(mean_ZHVI_2021 = test_b1$mean_ZHVI_2021)
+
+test_b2 <- test_b2 %>%
+  group_by(State) %>%
+  summarize(change_ZHVI_from_2015_2021= mean_ZHVI_2021/mean_ZHVI_2015) %>%
+  arrange(desc(change_ZHVI_from_2015_2021))
+
+head_test_b2 <- head(test_b2)
   
 
-ggplot(head_test_b, aes(State, improvement_rate_2015_to_2021)) + geom_boxplot()
+ggplot(head_test_b2, aes(State, change_ZHVI_from_2015_2021)) + geom_boxplot()
 ```
 
