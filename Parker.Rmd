@@ -1,0 +1,140 @@
+---
+title: "UTK MSBA Datathon"
+author: "Author"
+date: "2022-11-15"
+output: html_document
+---
+
+The data includes median housing price (Zillow), median rent (Zillow), household income (Census), and household count (Census) by zip code for the past few years. The data also includes interest rate for 30-year mortgage loans in the past years.
+
+```{r}
+library(tidyverse)
+library(stringr)
+```
+
+# Interest Rate
+
+```{r}
+Mortgage = read.csv('https://drive.google.com/uc?id=1lokCssSi25y6MzXBtry9QMOTfkZg0btW') %>%
+  `colnames<-`(c('Year', 'Rate')) %>%
+  mutate(Rate=as.numeric(str_replace(Rate, '%', '')))
+#Mortgage
+
+mortgage_2015 <- Mortgage %>% ## SUBSET mortgage to just 2015 and above
+  filter(Year >= 2015) 
+```
+
+```{r}
+plot(mortgage_2015, type = 'l')
+```
+
+# **Zip: Households and Income**
+
+```{r}
+Zip = read_csv('https://drive.google.com/uc?id=12wY5XI1KfV9ffmUDjO2utTrSa5Ksyus8') %>%
+  `colnames<-`(c('Year', 'Zip_Code', 'Households', 'Median_Income_USD')) %>%
+  filter(Households != 'null' | Median_Income_USD != 'null') %>%
+  mutate(Households = as.numeric(Households))
+#Zip
+
+zip_2015 <- Zip %>% ## SUBSET zip code to just 2015 and above
+  filter(as.integer(Year) >= as.integer(2015)) 
+```
+
+```{r}
+zip_2015 <- zip_2015 %>%
+  filter(!str_detect(Median_Income_USD, '\\+'))  ## REMOVED median income with a +
+```
+
+```{r}
+zip_2015 <- zip_2015 %>%
+  filter(!str_detect(Median_Income_USD, '\\-')) ## REMOVED median income with a -
+
+zip_2015 <- zip_2015 %>%
+  filter(!str_detect(Median_Income_USD, '(X)')) ## REMOVED median income with a (X)
+
+zip_2015$Median_Income_USD <- as.integer(zip_2015$Median_Income_USD) ## CHANGED median income to integer
+
+```
+
+# HOME VALUES INDEX
+
+Zillow Home Value Index (ZHVI): A smoothed, seasonally adjusted measure of the typical home value and market changes across a given region and housing type. It reflects the typical value for homes in the 35th to 65th percentile range. The raw version of that mid-tier ZHVI time series is also available.
+
+Zillow publishes top-tier ZHVI (\$, typical value for homes within the 65th to 95th percentile range for a given region) and bottom-tier ZHVI (\$, typical value for homes that fall within the 5th to 35th percentile range for a given region).
+
+Zillow also publishes ZHVI for all single-family residences (\$, typical value for all single-family homes in a given region), for condo/coops (\$), for all homes with 1, 2, 3, 4 and 5+ bedrooms (\$), and the ZHVI per square foot (\$, typical value of all homes per square foot calculated by taking the estimated home value for each home in a given region and dividing it by the home's square footage). Check out this overview of ZHVI and a deep-dive into its methodology.
+
+Here's a handy ZHVI User Guide for information about properly citing and making calculations with this metric.
+
+```{r}
+VI = read.csv('https://drive.google.com/uc?id=1ZToY3SzTWwg0gbKj_H9o7h6myt_dKFIu', row.names ='RegionName') %>% 
+   as_tibble()
+#VI
+```
+
+```{r}
+VIMonth = select(VI, contains('.'))
+#VIMonth
+```
+
+```{r}
+VITime = cbind(RegionName=rownames(VIMonth), stack(VIMonth)) %>%
+  mutate(
+    Year = substr(ind, 2, 5),
+    Month = substr(ind, 7, 8),
+  )
+#VITime
+
+```
+
+```{r}
+VIRegion = select(VI, !contains('.'))
+VIRegion
+
+VIRegion <- VIRegion %>% mutate(RegionName = 1:nrow(VIRegion)) ## Made RegionName to join later.
+VITime$RegionName <- as.integer(VITime$RegionName) # CHANGED RegionName to integer
+VITime$Month <- NULL ## Removed Month column as it caused conflicts. CAN BE ADDED LATER IF NEEDED
+VIRegion_VITime_Joined <- full_join(VIRegion,VITime, by = "RegionName") # JOINING ALL DATA BY RegionName
+
+colnames(VIRegion_VITime_Joined)[10] <- "ZHVI" # CHANGED the median house price from index to ZHVI
+
+VIRegion_VITime_Joined_2015 <- VIRegion_VITime_Joined %>% ## FILTERED the previous join to only just 2015 and above
+  filter(Year >= 2015)
+
+VIRegion_VITime_Joined_2015$Year <- as.integer(VIRegion_VITime_Joined_2015$Year) ## CHANGED Year to integer
+VIRegion_VITime_Joined_2015_MortageJoin <- full_join(VIRegion_VITime_Joined_2015, mortgage_2015, by = "Year") ## JOINED ALL DATA from mortgage 2015 to VIRegion_VITime_Joined_2015
+
+length(which(VIRegion_VITime_Joined_2015_MortageJoin$RegionID == as.integer(zip_2015$Zip_Code))) ## Tried to find how many zip codes matched. Have come to the conclusion that RegionID is not zipcode. Need to ask and see what this is.
+```
+
+# RENT INDEX
+
+Zillow Observed Rent Index (ZORI): A smoothed measure of the typical observed market rate rent across a given region. ZORI is a repeat-rent index that is weighted to the rental housing stock to ensure representativeness across the entire market, not just those homes currently listed for-rent. The index is dollar-denominated by computing the mean of listed rents that fall into the 40th to 60th percentile range for all homes and apartments in a given region, which is once again weighted to reflect the rental housing stock. Details available in ZORI methodology.
+
+```{r}
+RI = read.csv('https://drive.google.com/uc?id=1MTnf6k39PShycq66yRANKqFZW5BmJfME', row.names='RegionName')
+RI
+```
+
+```{r}
+RIMonth = select(RI, contains('.'))
+RIMonth
+```
+
+```{r}
+RITime = cbind(RegionName=rownames(RIMonth), stack(RIMonth)) %>%
+  mutate(
+    Year = substr(ind, 2, 5),
+    Month = substr(ind, 7, 8),
+  )
+RITime
+```
+
+```{r}
+RIRegion = select(RI, !contains('.'))
+RIRegion
+```
+
+
+
