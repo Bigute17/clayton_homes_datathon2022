@@ -203,6 +203,3 @@ ggplot(TEST, aes(Year, mean_ZHVI)) + geom_point() + geom_line()
 
 ```
 
-
-
-
