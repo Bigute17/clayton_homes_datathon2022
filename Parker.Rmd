@@ -90,22 +90,39 @@ VITime = cbind(RegionName=rownames(VIMonth), stack(VIMonth)) %>%
 
 ```{r}
 VIRegion = select(VI, !contains('.'))
-VIRegion
+#VIRegion
+```
 
+
+```{r}
 VIRegion <- VIRegion %>% mutate(RegionName = 1:nrow(VIRegion)) ## Made RegionName to join later.
 VITime$RegionName <- as.integer(VITime$RegionName) # CHANGED RegionName to integer
-VITime$Month <- NULL ## Removed Month column as it caused conflicts. CAN BE ADDED LATER IF NEEDED
+VITime$Month <- NULL ## Removed Month column as it caused conflicts. 
 VIRegion_VITime_Joined <- full_join(VIRegion,VITime, by = "RegionName") # JOINING ALL DATA BY RegionName
 
-colnames(VIRegion_VITime_Joined)[10] <- "ZHVI" # CHANGED the median house price from index to ZHVI
+VIRegion_VITime_Joined <- VIRegion_VITime_Joined %>% mutate(Month = substr(ind, 7, 8)) ## ADDED Month Columns back to be used for a join later
+
+colnames(VIRegion_VITime_Joined)[10] <- "ZHVI" # CHANGED the median house price from index to ZHVI. THIS IS THE average of the 35th - 65th percentile for housing price.
 
 VIRegion_VITime_Joined_2015 <- VIRegion_VITime_Joined %>% ## FILTERED the previous join to only just 2015 and above
   filter(Year >= 2015)
 
 VIRegion_VITime_Joined_2015$Year <- as.integer(VIRegion_VITime_Joined_2015$Year) ## CHANGED Year to integer
-VIRegion_VITime_Joined_2015_MortageJoin <- full_join(VIRegion_VITime_Joined_2015, mortgage_2015, by = "Year") ## JOINED ALL DATA from mortgage 2015 to VIRegion_VITime_Joined_2015
+VIRegion_VITime_Joined_2015_Mortage_Join <- full_join(VIRegion_VITime_Joined_2015, mortgage_2015, by = "Year") ## JOINED ALL DATA from mortgage 2015 to VIRegion_VITime_Joined_2015
+```
 
-length(which(VIRegion_VITime_Joined_2015_MortageJoin$RegionID == as.integer(zip_2015$Zip_Code))) ## Tried to find how many zip codes matched. Have come to the conclusion that RegionID is not zipcode. Need to ask and see what this is.
+
+```{r}
+## CLEANING UP
+rm(Mortgage)
+rm(VI)
+rm(VIMonth)
+rm(VIRegion_VITime_Joined)
+rm(VIRegion_VITime_Joined_2015)
+rm(Zip)
+rm(VITime)
+rm(VIRegion)
+## Only the Data we need for now
 ```
 
 # RENT INDEX
@@ -113,13 +130,13 @@ length(which(VIRegion_VITime_Joined_2015_MortageJoin$RegionID == as.integer(zip_
 Zillow Observed Rent Index (ZORI): A smoothed measure of the typical observed market rate rent across a given region. ZORI is a repeat-rent index that is weighted to the rental housing stock to ensure representativeness across the entire market, not just those homes currently listed for-rent. The index is dollar-denominated by computing the mean of listed rents that fall into the 40th to 60th percentile range for all homes and apartments in a given region, which is once again weighted to reflect the rental housing stock. Details available in ZORI methodology.
 
 ```{r}
-RI = read.csv('https://drive.google.com/uc?id=1MTnf6k39PShycq66yRANKqFZW5BmJfME', row.names='RegionName')
-RI
+RI = read.csv('https://drive.google.com/uc?id=1MTnf6k39PShycq66yRANKqFZW5BmJfME')
+#RI
 ```
 
 ```{r}
 RIMonth = select(RI, contains('.'))
-RIMonth
+#RIMonth
 ```
 
 ```{r}
@@ -128,13 +145,63 @@ RITime = cbind(RegionName=rownames(RIMonth), stack(RIMonth)) %>%
     Year = substr(ind, 2, 5),
     Month = substr(ind, 7, 8),
   )
-RITime
+#RITime
 ```
 
 ```{r}
 RIRegion = select(RI, !contains('.'))
-RIRegion
+#RIRegion
 ```
 
 
+```{r}
+RIRegion <- RIRegion %>% mutate(RegionName = 1:nrow(RIRegion)) ## Made RegionName to join later.
+RITime$Month <- NULL ## Removed Month column as it caused conflicts. CAN BE ADDED LATER IF NEEDED
+RITime$RegionName <- as.integer(RITime$RegionName)
+
+RIRegion_RITime_Joined <- full_join(RIRegion,RITime, by = "RegionName") # JOINING ALL DATA BY RegionName 
+
+RIRegion_RITime_Joined <- RIRegion_RITime_Joined %>% mutate(Month = substr(ind, 7, 8)) # ADDING Month back for the join later
+
+colnames(RIRegion_RITime_Joined)[10] <- "ZORI" # CHANGED the median rent price from index to ZORI
+
+RIRegion_RITime_Joined$Year <- as.integer(RIRegion_RITime_Joined$Year) ## CHANGED Year to integer
+
+###
+# RIRegion_RITime_Joined ## Is all of the Renter Index information Together. You may need to join the mortage stuff to it if you want to do something with that.
+###
+```
+
+
+```{r}
+FULL_DATASET <- inner_join(VIRegion_VITime_Joined_2015_Mortage_Join,RIRegion_RITime_Joined, by = c("RegionName","Month","Year"), suffix = c("_VI","_RI")) ## INNER JOINING by RegionName, Month, and Year in order to match everything correctly. The suffix is there to understand which dataset you are looking at. _VI refers to the housing value index. _RI refers to the Renter Index. 
+
+#There is a lot of missing data for the index's as one index will have data but the other wont for that time of the year and month. Should be okay as we are mainly looking at houses.
+
+FULL_DATASET <- FULL_DATASET %>% filter(Year <= 2021) ## Removed dates that go beyond the 30 - year mortage rate.
+```
+
+```{r}
+#CLEANING UP
+rm(mortgage_2015)
+rm(RI)
+rm(RIMonth)
+rm(RIRegion)
+rm(RITime)
+rm(zip_2015)
+rm(RIRegion_RITime_Joined)
+rm(VIRegion_VITime_Joined_2015_Mortage_Join)
+```
+
+```{r}
+TEST <- FULL_DATASET %>%
+  group_by(Year) %>%
+  summarise(mean_ZHVI = mean(ZHVI, na.rm = T),
+            mean_ZORI = mean(ZORI, na.rm = T))
+
+ggplot(TEST, aes(Year, mean_ZHVI)) + geom_point() + geom_line()
+
+# This is just for testing purposes.
+
+```
 
