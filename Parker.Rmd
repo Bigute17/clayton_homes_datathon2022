@@ -23,7 +23,7 @@ Mortgage = read.csv('https://drive.google.com/uc?id=1lokCssSi25y6MzXBtry9QMOTfkZ
 ```
 
 ```{r}
-plot(mortgage_2015, type = 'l')
+plot(Mortgage, type = 'l')
 ```
 
 # **Zip: Households and Income**
@@ -50,6 +50,8 @@ Zip <- Zip %>%
 
 Zip$Median_Income_USD <- as.integer(Zip$Median_Income_USD) ## CHANGED median income to integer
 
+Zip <- Zip %>%
+  filter(Year >= 2015)
 ```
 
 # HOME VALUES INDEX
@@ -90,10 +92,11 @@ VIRegion = select(VI, !contains('.'))
 
 
 ```{r}
-VIRegion <- VIRegion %>% mutate(RegionName = 1:nrow(VIRegion)) ## Made RegionName to join later.
+VIRegion <- VIRegion %>% mutate(Bind_Col = 1:nrow(VIRegion)) ## Made RegionName to join later.
+VIRegion$Bind_Col <- as.integer(VIRegion$Bind_Col) # CHANGED Bind_Col to integer
 VITime$RegionName <- as.integer(VITime$RegionName) # CHANGED RegionName to integer
 VITime$Month <- NULL ## Removed Month column as it caused conflicts. 
-VIRegion_VITime_Joined <- full_join(VIRegion,VITime, by = "RegionName") # JOINING ALL DATA BY RegionName
+VIRegion_VITime_Joined <- full_join(VIRegion,VITime, by = c("Bind_Col" = "RegionName")) # JOINING ALL DATA BY RegionName
 
 VIRegion_VITime_Joined <- VIRegion_VITime_Joined %>% mutate(Month = substr(ind, 7, 8)) ## ADDED Month Columns back to be used for a join later
 
@@ -114,7 +117,6 @@ VIRegion_VITime_Joined <- VIRegion_VITime_Joined %>% filter(Year <= 2021) ## Too
 ## CLEANING UP
 rm(VI)
 rm(VIMonth)
-rm(Zip)
 rm(VITime)
 rm(VIRegion)
 ## Only the Data we need for now
@@ -150,15 +152,15 @@ RIRegion = select(RI, !contains('.'))
 
 
 ```{r}
-RIRegion <- RIRegion %>% mutate(RegionName = 1:nrow(RIRegion)) ## Made RegionName to join later.
+RIRegion <- RIRegion %>% mutate(Bind_Col = 1:nrow(RIRegion)) ## Made RegionName to join later.
 RITime$Month <- NULL ## Removed Month column as it caused conflicts. CAN BE ADDED LATER IF NEEDED
 RITime$RegionName <- as.integer(RITime$RegionName)
 
-RIRegion_RITime_Joined <- full_join(RIRegion,RITime, by = "RegionName") # JOINING ALL DATA BY RegionName 
+RIRegion_RITime_Joined <- full_join(RIRegion,RITime, by = c("Bind_Col" = "RegionName")) # JOINING ALL DATA BY RegionName 
 
 RIRegion_RITime_Joined <- RIRegion_RITime_Joined %>% mutate(Month = substr(ind, 7, 8)) # ADDING Month back for the join later
 
-colnames(RIRegion_RITime_Joined)[10] <- "ZORI" # CHANGED the median rent price from index to ZORI
+colnames(RIRegion_RITime_Joined)[11] <- "ZORI" # CHANGED the median rent price from index to ZORI
 
 RIRegion_RITime_Joined$Year <- as.integer(RIRegion_RITime_Joined$Year) ## CHANGED Year to integer
 
@@ -171,17 +173,20 @@ RIRegion_RITime_Joined_2015_Mortage_Join <- full_join(RIRegion_RITime_Joined, Mo
 
 
 ```{r}
-FULL_DATASET <- full_join(VIRegion_VITime_Joined,RIRegion_RITime_Joined_2015_Mortage_Join, by = c("RegionName","Month","Year","RegionID","State","Metro",
-                                                                                                  "StateName","RegionType","SizeRank","City","CountyName","ind","Rate"), suffix = c("_VI","_RI")) ## INNER JOINING by RegionName, Month, and Year in order to match everything correctly. The suffix is there to understand which dataset you are looking at. _VI refers to the housing value index. _RI refers to the Renter Index. 
+FULL_DATASET <- full_join(VIRegion_VITime_Joined,RIRegion_RITime_Joined_2015_Mortage_Join, by = c("RegionID","Metro","ind","Rate","StateName","Year","Month","CountyName","State","City","SizeRank","RegionType","Bind_Col"))## INNER JOINING by RegionName, Month, and Year in order to match everything correctly. The suffix is there to understand which dataset you are looking at. _VI refers to the housing value index. _RI refers to the Renter Index. 
 
 #There is a lot of missing data for the index's as one index will have data but the other wont for that time of the year and month. Should be okay as we are mainly looking at houses.
+
 FULL_DATASET <- FULL_DATASET %>% filter(Year >= 2015) ## 
 FULL_DATASET <- FULL_DATASET %>% filter(Year <= 2021) ## Removed dates that go beyond the 30 - year mortage rate.
+
+FULL_DATASET <- full_join(FULL_DATASET,Zip, by = c("RegionName" = "Zip_Code", "Year"))
+
+colnames(FULL_DATASET)[15] <- "Zip_Code"
 ```
 
 ```{r}
 #CLEANING UP
-rm(mortgage_2015)
 rm(RI)
 rm(RIMonth)
 rm(RIRegion)
@@ -189,6 +194,10 @@ rm(RITime)
 rm(zip_2015)
 rm(RIRegion_RITime_Joined)
 rm(VIRegion_VITime_Joined_2015_Mortage_Join)
+rm(Mortgage)
+rm(Zip)
+rm(RIRegion_RITime_Joined_2015_Mortage_Join)
+rm(VIRegion_VITime_Joined)
 ```
 
 ```{r}
