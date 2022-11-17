@@ -216,3 +216,32 @@ ggplot(TEST, aes(Year, mean_ZHVI)) + geom_point() + geom_line()
 
 ```
 
+```{r}
+PMT <- function(PV, i, n) {
+(PV*i*(1+i)^n) / ((1+i)^n-1)
+}
+
+PMT(175000, 0.04125/12, 30*12)
+
+PV <- function(PMT, i, n) {
+(PMT*((1+i)^n-1)) / (i*(1+i)^n)
+}
+
+PV(948.61, 0.03/12, 30*12)
+
+HOUSE_WITH_EVERYTHING$MonthlyPmt <- c()
+for (i in 1:nrow(HOUSE_WITH_EVERYTHING)) {
+  HOUSE_WITH_EVERYTHING$MonthlyPmt[i] = PMT(HOUSE_WITH_EVERYTHING$ZHVI[i], (HOUSE_WITH_EVERYTHING$Rate[i]/100)/12, 30*12)
+}
+HOUSE_WITH_EVERYTHING <- HOUSE_WITH_EVERYTHING %>% 
+                          mutate(MonthlyPmt = PMT(ZHVI,(Rate/100)/12,30*12),
+                                 QualifyingIncome = MonthlyPmt * 4 * 12,
+                                 AffordabilityIndex = (Median_Income_USD/QualifyingIncome) * 100)
+summary(HOUSE_WITH_EVERYTHING, na.rm = T)
+
+hist(HOUSE_WITH_EVERYTHING$AffordabilityIndex)
+mean(HOUSE_WITH_EVERYTHING$AffordabilityIndex < 100, na.rm = T)
+mean(HOUSE_WITH_EVERYTHING$AffordabilityIndex >= 100, na.rm = T)
+
+```   
+
