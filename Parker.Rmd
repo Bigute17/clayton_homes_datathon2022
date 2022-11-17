@@ -212,3 +212,20 @@ ggplot(TEST, aes(Year, mean_ZHVI)) + geom_point() + geom_line()
 
 ```
 
+
+```{r}
+# P = price of house
+# interest rate %/12
+# n = number of months to pay off the loan
+
+
+function(P){
+  Monthly_payment = P [ i(1 + i)^n ] / [ (1 + i)^n – 1]
+}
+
+FULL_DATASET %>%
+  mutate(thirty_percent_income = 0.3*Median_Income_USD,
+         thirty_percent_income_per_month = thirty_percent_income/12,
+         )
+```
+
